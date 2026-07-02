@@ -1029,6 +1029,8 @@ class MusicPlayerBackgroundTask extends BaseAudioHandler with SeekHandler, Queue
       return await _androidAutoHelper.getMediaItems(
         MediaItemId(contentType: ContentType.playlists, parentType: MediaItemParentType.rootCollection),
       );
+    } else if (parentMediaId == "menu:shufflePlaylists") {
+      return await _androidAutoHelper.getShufflePlaylistsMenu();
     } else {
       try {
         final itemId = MediaItemId.fromJson(jsonDecode(parentMediaId) as Map<String, dynamic>);
@@ -1048,6 +1050,9 @@ class MusicPlayerBackgroundTask extends BaseAudioHandler with SeekHandler, Queue
     try {
       if (mediaId == QueueItemSourceNameType.shuffleAll.name) {
         return await _androidAutoHelper.shuffleAllTracks();
+      }
+      if (mediaId.startsWith("shufflePlaylist:")) {
+        return await _androidAutoHelper.shufflePlaylist(mediaId.substring("shufflePlaylist:".length));
       }
       final mediaItemId = MediaItemId.fromJson(jsonDecode(mediaId) as Map<String, dynamic>);
 

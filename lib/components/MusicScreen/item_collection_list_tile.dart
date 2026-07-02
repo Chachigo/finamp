@@ -27,6 +27,7 @@ class ItemCollectionListTile extends ConsumerWidget {
     required this.item,
     this.parentType,
     this.onTap,
+    this.onShuffle,
     this.albumShowsYearAndDurationInstead = false,
     this.adaptiveAdditionalInfoSortBy,
     this.showFavoriteIconOnlyWhenFilterDisabled = false,
@@ -36,6 +37,7 @@ class ItemCollectionListTile extends ConsumerWidget {
   final BaseItemDto item;
   final ContentType? parentType;
   final void Function()? onTap;
+  final void Function()? onShuffle;
   final bool albumShowsYearAndDurationInstead;
   final SortBy? adaptiveAdditionalInfoSortBy;
   final bool showFavoriteIconOnlyWhenFilterDisabled;
@@ -233,6 +235,12 @@ class ItemCollectionListTile extends ConsumerWidget {
                         : jellyfinApiHelper.selectedMixAlbums)
                     .contains(item))
                   const Icon(Icons.explore),
+                if (itemType == BaseItemDtoType.playlist && onShuffle != null)
+                  IconButton(
+                    icon: const Icon(TablerIcons.arrows_shuffle),
+                    onPressed: onShuffle,
+                    visualDensity: VisualDensity.compact,
+                  ),
                 FavoriteButton(
                   item: item,
                   onlyIfFav: true,
