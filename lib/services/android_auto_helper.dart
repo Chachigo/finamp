@@ -519,6 +519,48 @@ class AndroidAutoHelper {
     }
   }
 
+  Future<void> shufflePlaylist(String playlistId) async {
+    final queueService = GetIt.instance<QueueService>();
+
+    try {
+      final playlist = await _jellyfinApiHelper.getItemById(BaseItemId(playlistId));
+      final items = await _jellyfinApiHelper.getItems(
+        parentItem: playlist,
+        sortBy: "ParentIndexNumber,IndexNumber",
+        includeItemTypes: "Audio",
+      );
+      if (items == null || items.isEmpty) return;
+
+      await queueService.startPlayback(
+        items: items,
+        source: QueueItemSource(
+          type: QueueItemSourceType.playlist,
+          name: QueueItemSourceName(type: QueueItemSourceNameType.preTranslated, pretranslatedName: playlist.name),
+          id: playlist.id,
+          item: playlist,
+        ),
+        order: FinampPlaybackOrder.shuffled,
+      );
+    } catch (err) {
+      _androidAutoHelperLogger.severe("Error while shuffling playlist $playlistId", err);
+    }
+  }
+
+  Future<List<MediaItem>> getShufflePlaylistsMenu() async {
+    final items = await getBaseItems(
+      MediaItemId(contentType: ContentType.playlists, parentType: MediaItemParentType.rootCollection),
+    );
+    return items
+        .map(
+          (item) => MediaItem(
+            id: "shufflePlaylist:${item.id.raw}",
+            title: item.name ?? "?",
+            playable: true,
+          ),
+        )
+        .toList();
+  }
+
   Future<List<MediaItem>> getMediaItems(MediaItemId itemId) async {
     final queueService = GetIt.instance<QueueService>();
     final items = await getBaseItems(itemId);
@@ -530,6 +572,17 @@ class AndroidAutoHelper {
           id: QueueItemSourceNameType.shuffleAll.name,
           title: GlobalSnackbar.requireL10n.shuffleAll,
           playable: true,
+        ),
+      );
+    }
+
+    if (itemId.contentType == ContentType.playlists && itemId.parentType == MediaItemParentType.rootCollection) {
+      mediaItems.add(
+        MediaItem(
+          id: "menu:shufflePlaylists",
+          title: GlobalSnackbar.requireL10n.shuffleAll,
+          playable: false,
+          artUri: Uri.parse("android.resource://com.unicornsonlsd.finamp/drawable/baseline_shuffle_white_24"),
         ),
       );
     }

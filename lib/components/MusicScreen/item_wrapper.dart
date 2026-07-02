@@ -18,6 +18,8 @@ import 'package:finamp/screens/genre_screen.dart';
 import 'package:finamp/services/feedback_helper.dart';
 import 'package:finamp/services/finamp_settings_helper.dart';
 import 'package:finamp/services/finamp_user_helper.dart';
+import 'package:finamp/services/music_providers.dart';
+import 'package:finamp/services/queue_service.dart';
 import 'package:finamp/services/theme_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -157,6 +159,16 @@ class _ItemCollectionWrapperState extends ConsumerState<ItemWrapper> {
           : ItemCollectionListTile(
               item: mutableItem,
               onTap: onTap,
+              onShuffle: widget.interactive && BaseItemDtoType.fromItem(mutableItem) == BaseItemDtoType.playlist
+                  ? () async {
+                      final queueService = GetIt.instance<QueueService>();
+                      final playable = FinampPlayableDto.fromItem(mutableItem);
+                      final slice = await ref.read(
+                        getPlayableSliceProvider(item: playable, startingOffset: 0).future,
+                      );
+                      await queueService.startSlicePlayback(slice.shuffle());
+                    }
+                  : null,
               albumShowsYearAndDurationInstead: widget.albumShowsYearAndDurationInstead,
               adaptiveAdditionalInfoSortBy: widget.adaptiveAdditionalInfoSortBy,
               showFavoriteIconOnlyWhenFilterDisabled: widget.showFavoriteIconOnlyWhenFilterDisabled,
