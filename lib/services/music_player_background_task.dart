@@ -992,6 +992,11 @@ class MusicPlayerBackgroundTask extends BaseAudioHandler with SeekHandler, Queue
         // ignore: deprecated_member_use_from_same_package
         title: _appLocalizations?.playlists ?? ContentType.playlists.toString(),
         playable: false,
+        extras: {
+          // Make browsable children (e.g. "Tout mélanger") show artwork as a category list item.
+          // Playable children (individual playlists) inherit the root CONTENT_STYLE_PLAYABLE_HINT.
+          "android.media.browse.CONTENT_STYLE_BROWSABLE_HINT": 3,
+        },
       ),
       MediaItem(
         id: MediaItemId(contentType: ContentType.genres, parentType: MediaItemParentType.rootCollection).toString(),
