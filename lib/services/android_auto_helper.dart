@@ -547,18 +547,30 @@ class AndroidAutoHelper {
   }
 
   Future<List<MediaItem>> getShufflePlaylistsMenu() async {
+    final queueService = GetIt.instance<QueueService>();
     final items = await getBaseItems(
       MediaItemId(contentType: ContentType.playlists, parentType: MediaItemParentType.rootCollection),
     );
-    return items
-        .map(
-          (item) => MediaItem(
-            id: "shufflePlaylist:${item.id.raw}",
-            title: item.name ?? "?",
-            playable: true,
-          ),
-        )
-        .toList();
+    final List<MediaItem> result = [];
+    for (final item in items) {
+      final generated = await queueService.generateMediaItem(
+        item,
+        parentType: MediaItemParentType.collection,
+        parentId: item.parentId,
+        isPlayable: _isPlayable,
+      );
+      result.add(MediaItem(
+        id: "shufflePlaylist:${item.id.raw}",
+        title: generated.title,
+        artist: generated.artist,
+        album: generated.album,
+        duration: generated.duration,
+        artUri: generated.artUri,
+        playable: true,
+        extras: generated.extras,
+      ));
+    }
+    return result;
   }
 
   Future<List<MediaItem>> getMediaItems(MediaItemId itemId) async {
@@ -582,7 +594,12 @@ class AndroidAutoHelper {
           id: "menu:shufflePlaylists",
           title: GlobalSnackbar.requireL10n.shuffleAll,
           playable: false,
-          artUri: Uri.parse("android.resource://com.unicornsonlsd.finamp/drawable/baseline_shuffle_white_24"),
+          artUri: Uri.parse("content://com.unicornsonlsd.finamp/drawable/tabler_icons_arrows_shuffle_24"),
+          extras: {
+            // Override global CONTENT_STYLE_BROWSABLE_HINT=1 (list, no artwork).
+            // Value 3 = CONTENT_STYLE_CATEGORY_LIST_ITEM → displays artUri as icon.
+            "android.media.browse.CONTENT_STYLE_SINGLE_ITEM_HINT": 3,
+          },
         ),
       );
     }

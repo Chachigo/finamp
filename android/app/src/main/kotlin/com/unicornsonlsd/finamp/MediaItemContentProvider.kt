@@ -3,11 +3,14 @@ package com.unicornsonlsd.finamp
 import android.content.ContentProvider
 import android.content.ContentValues
 import android.database.Cursor
+import android.graphics.Bitmap
+import android.graphics.Canvas
 import android.net.Uri
 import android.os.Bundle
 import android.os.ParcelFileDescriptor
 import android.util.Log
 import android.util.LruCache
+import androidx.core.content.ContextCompat
 import androidx.core.net.toUri
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -60,6 +63,16 @@ class MediaItemContentProvider : ContentProvider() {
             }
         }
 
+        // serve a pre-rendered drawable PNG (rendered in onCreate on main thread)
+        if (uri.pathSegments.firstOrNull() == "drawable") {
+            val resName = uri.pathSegments.getOrNull(1)
+                ?: throw FileNotFoundException("No drawable name in URI: $uri")
+            val cacheFile = File(context!!.cacheDir, "drawable_$resName.png")
+            Log.d(TAG, "openFile: drawable request for $resName, exists=${cacheFile.exists()}, path=${cacheFile.absolutePath}")
+            if (!cacheFile.exists()) throw FileNotFoundException("Pre-rendered drawable not found: $resName")
+            return ParcelFileDescriptor.open(cacheFile, ParcelFileDescriptor.MODE_READ_ONLY)
+        }
+
         // this means it's a local image (downloaded or placeholder art)
         return ParcelFileDescriptor.open(File(uri.path!!), ParcelFileDescriptor.MODE_READ_ONLY)
     }
@@ -81,7 +94,29 @@ class MediaItemContentProvider : ContentProvider() {
             }
         }
 
+        // Pre-render drawable icons on the main thread so they're ready for openFile() worker calls.
+        preRenderDrawable("tabler_icons_arrows_shuffle_24")
+
         return true
+    }
+
+    private fun preRenderDrawable(resName: String) {
+        try {
+            val ctx = context ?: return
+            val cacheFile = File(ctx.cacheDir, "drawable_$resName.png")
+            if (cacheFile.exists()) return
+            val resId = ctx.resources.getIdentifier(resName, "drawable", ctx.packageName)
+            if (resId == 0) { Log.e(TAG, "preRenderDrawable: resource not found: $resName"); return }
+            val drawable = ContextCompat.getDrawable(ctx, resId)
+                ?: run { Log.e(TAG, "preRenderDrawable: null drawable for $resName"); return }
+            val bitmap = Bitmap.createBitmap(128, 128, Bitmap.Config.ARGB_8888)
+            drawable.setBounds(0, 0, 128, 128)
+            drawable.draw(Canvas(bitmap))
+            FileOutputStream(cacheFile).use { bitmap.compress(Bitmap.CompressFormat.PNG, 100, it) }
+            Log.d(TAG, "preRenderDrawable: saved to ${cacheFile.absolutePath}")
+        } catch (e: Exception) {
+            Log.e(TAG, "preRenderDrawable: failed for $resName", e)
+        }
     }
 
     override fun query(
@@ -95,6 +130,7 @@ class MediaItemContentProvider : ContentProvider() {
     }
 
     override fun getType(uri: Uri): String? {
+        if (uri.pathSegments.firstOrNull() == "drawable") return "image/png"
         return null
     }
 
